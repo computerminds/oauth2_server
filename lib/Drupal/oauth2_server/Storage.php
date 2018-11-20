@@ -204,7 +204,7 @@ class Storage implements AuthorizationCodeInterface,
     return $code;
   }
 
-  public function setAuthorizationCode($code, $client_key, $uid, $redirect_uri, $expires, $scope = null, $id_token = null) {
+  public function setAuthorizationCode($code, $client_key, $uid, $redirect_uri, $expires, $scope = null, $id_token = null, $code_challenge = null, $code_challenge_method = null) {
     $client = oauth2_server_client_load($client_key);
     if (!$client) {
       throw new \InvalidArgumentException("The supplied client couldn't be loaded.");
@@ -223,6 +223,9 @@ class Storage implements AuthorizationCodeInterface,
       $authorization_code->uid = $uid;
       $authorization_code->code = $code;
       $authorization_code->id_token = $id_token;
+      if ($code_challenge && $code_challenge_method) {
+        $authorization_code->code_challenge = $this->convertCodeChallengeMethodToSingleCharacter($code_challenge_method) . $code_challenge;
+      }
     }
 
     $authorization_code->redirect_uri = $redirect_uri;
@@ -231,6 +234,28 @@ class Storage implements AuthorizationCodeInterface,
 
     $status = $authorization_code->save();
     return $status;
+  }
+
+  protected function convertCodeChallengeMethodToSingleCharacter ($code_challenge_method) {
+    switch ($code_challenge_method) {
+      case 'S256':
+        return 'S';
+
+      case 'plain':
+      default:
+        return 'P';
+    }
+  }
+
+  protected function convertSingleCharacterToCodeChallengeMethod($character) {
+    switch ($character) {
+      case 'S':
+        return 'S256';
+
+      case 'P':
+      default:
+        return 'plain';
+    }
   }
 
   public function expireAuthorizationCode($code) {
